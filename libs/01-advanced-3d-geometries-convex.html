@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+    <title>Example 06.01 - Advanced 3D geometries - Convex Hull</title>
+    <script type="text/javascript" src="../libs/three.js"></script>
+    <script type="text/javascript" src="../libs/jquery-1.9.0.js"></script>
+    <script type="text/javascript" src="../libs/stats.js"></script>
+    <script type="text/javascript" src="./ConvexGeometry.js"></script>
+    <script type="text/javascript" src="../libs/dat.gui.js"></script>
+    <style>
+        body {
+            /* set margin to 0 and overflow to hidden, to go fullscreen */
+            margin: 0;
+            overflow: hidden;
+        }
+        canvas{
+            width: 100%;
+            height:100%;
+        }
+    </style>
+</head>
+<body>
+
+<div id="Stats-output">
+</div>
+<!-- Div which will hold the Output -->
+<div id="WebGL-output">
+</div>
+
+<!-- Javascript code that runs our Three.js examples -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.115.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.115.0/examples/js/controls/OrbitControls.js"></script>
+<script type="text/javascript" src="./ConvexGeometry.js"></script>
+<script>
+     let points = [];
+  function fillWithPoints(geometry, count) {
+    
+    var dummyTarget = new THREE.Vector3(); // to prevent logging of warnings from ray.at() method
+    
+    var ray = new THREE.Ray()
+    
+    var size = new THREE.Vector3();
+    geometry.computeBoundingBox();
+    let bbox = geometry.boundingBox;
+    
+   
+    
+    var dir = new THREE.Vector3(1, 1, 1).normalize();
+    /*for (let i = 0; i < count; i++) {
+      let p = setRandomVector(bbox.min, bbox.max);
+      points.push(p);
+    }*/
+    let counter = 0;
+    while(counter < count){
+      let v = new THREE.Vector3(
+        THREE.Math.randFloat(bbox.min.x, bbox.max.x),
+        THREE.Math.randFloat(bbox.min.y, bbox.max.y),
+        THREE.Math.randFloat(bbox.min.z, bbox.max.z)
+      );
+      console.log(v);
+      if (isInside(v)){
+        points.push(v);
+        counter++;
+      }
+    }
+    
+    /*function setRandomVector(min, max){
+      let v = new THREE.Vector3(
+        THREE.Math.randFloat(min.x, max.x),
+        THREE.Math.randFloat(min.y, max.y),
+        THREE.Math.randFloat(min.z, max.z)
+      );
+      if (!isInside(v)){return setRandomVector(min, max);}
+      return v;
+    }*/
+    
+    function isInside(v){
+      
+      ray.set(v, dir);
+      let counter = 0;
+      
+      let pos = geometry.attributes.position;
+      let faces = pos.count / 3;
+      //console.log(faces);
+      let vA = new THREE.Vector3(), vB = new THREE.Vector3(), vC = new THREE.Vector3();
+      for(let i = 0; i < faces; i++){
+        vA.fromBufferAttribute(pos, i * 3 + 0);
+        vB.fromBufferAttribute(pos, i * 3 + 1);
+        vC.fromBufferAttribute(pos, i * 3 + 2);
+        if (ray.intersectTriangle(vA, vB, vC, false, dummyTarget)) counter++;
+      }
+      
+      return counter % 2 == 1;
+    }
+    console.log(points.length);
+    return new THREE.BufferGeometry().setFromPoints(points);
+  }
+
+
+  var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, 1, 1, 1000);
+camera.position.setScalar(15);
+var renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+var canvas = renderer.domElement
+document.body.appendChild(canvas);
+
+var controls = new THREE.OrbitControls(camera, canvas);
+var geometry = new THREE.TorusBufferGeometry( 5, 3, 16, 18 ).toNonIndexed();
+var material = new THREE.MeshBasicMaterial( { color: false,opacity:0, wireframe: true } );
+var torus = new THREE.Mesh( geometry, material );
+//scene.add(pointz);
+function makeTorus(){
+
+    
+//console.log(geometry);
+
+
+
+var pointsGeom = fillWithPoints(geometry, 1000);
+//console.log(pointsGeom);
+var pointsMat = new THREE.PointsMaterial({color: "green", size: 0.25});
+var pointz = new THREE.Points(pointsGeom, pointsMat);
+
+scene.add(pointz)
+
+}
+makeTorus()
+
+//var hullGeometry = new THREE.ConvexGeometry();
+           // hullMesh = createMesh(hullGeometry);
+
+           var controls = new function () {
+            // we need the first child, since it's a multimaterial
+          
+
+            this.redraw = function () { 
+                 
+              scene.remove(pointz);
+                makeTorus();
+
+            };
+
+        }
+
+        var gui = new dat.GUI();
+        gui.add(controls, 'redraw');
+render();
+
+function resize(renderer) {
+  const canvas = renderer.domElement;
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+  const needResize = canvas.width !== width || canvas.height !== height;
+  if (needResize) {
+    renderer.setSize(width, height, false);
+  }
+  return needResize;
+}
+
+function render() {
+  if (resize(renderer)) {
+    camera.aspect = canvas.clientWidth / canvas.clientHeight;
+    camera.updateProjectionMatrix();
+  }
+  renderer.render(scene, camera);
+  requestAnimationFrame(render);
+}
+
+function createMesh(geom) {
+
+// assign two materials
+var meshMaterial = new THREE.MeshBasicMaterial({color: 0x00ff00, transparent: true, opacity: 0.2});
+meshMaterial.side = THREE.DoubleSide;
+var wireFrameMat = new THREE.MeshBasicMaterial();
+wireFrameMat.wireframe = true;
+
+// create a multimaterial
+var mesh = THREE.SceneUtils.createMultiMaterialObject(geom, [meshMaterial, wireFrameMat]);
+
+return mesh;
+}
+
+</script>
+</body>
+</html>

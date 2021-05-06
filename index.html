@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+    <title>Example 06.01 - Advanced 3D geometries - Convex Hull</title>
+    <script type="text/javascript" src="../libs/three.js"></script>
+    <script type="text/javascript" src="../libs/jquery-1.9.0.js"></script>
+    <script type="text/javascript" src="../libs/stats.js"></script>
+    <script type="text/javascript" src="./ConvexGeometry.js"></script>
+    <script type="text/javascript" src="../libs/dat.gui.js"></script>
+    <style>
+        body {
+            /* set margin to 0 and overflow to hidden, to go fullscreen */
+            margin: 0;
+            overflow: hidden;
+        }
+        canvas{
+            width: 100%;
+            height:100%;
+        }
+    </style>
+</head>
+<body>
+
+<div id="Stats-output">
+</div>
+<!-- Div which will hold the Output -->
+<div id="WebGL-output">
+</div>
+
+<!-- Javascript code that runs our Three.js examples -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.115.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.115.0/examples/js/controls/OrbitControls.js"></script>
+<script type="text/javascript" src="./ConvexGeometry.js"></script>
+<script>
+     let points = [];
+  function fillWithPoints(geometry, count) {
+    
+    var dummyTarget = new THREE.Vector3(); // to prevent logging of warnings from ray.at() method
+    
+    var ray = new THREE.Ray()
+    
+    var size = new THREE.Vector3();
+    geometry.computeBoundingBox();
+    let bbox = geometry.boundingBox;
+    
+   
+    
+    var dir = new THREE.Vector3(1, 1, 1).normalize();
+    /*for (let i = 0; i < count; i++) {
+      let p = setRandomVector(bbox.min, bbox.max);
+      points.push(p);
+    }*/
+    let counter = 0;
+    while(counter < count){
+      let v = new THREE.Vector3(
+        THREE.Math.randFloat(bbox.min.x, bbox.max.x),
+        THREE.Math.randFloat(bbox.min.y, bbox.max.y),
+        THREE.Math.randFloat(bbox.min.z, bbox.max.z)
+      );
+      console.log(v);
+      if (isInside(v)){
+        points.push(v);
+        counter++;
+      }
+    }
+    
+    /*function setRandomVector(min, max){
+      let v = new THREE.Vector3(
+        THREE.Math.randFloat(min.x, max.x),
+        THREE.Math.randFloat(min.y, max.y),
+        THREE.Math.randFloat(min.z, max.z)
+      );
+      if (!isInside(v)){return setRandomVector(min, max);}
+      return v;
+    }*/
+    
+    function isInside(v){
+      
+      ray.set(v, dir);
+      let counter = 0;
+      
+      let pos = geometry.attributes.position;
+      let faces = pos.count / 3;
+      //console.log(faces);
+      let vA = new THREE.Vector3(), vB = new THREE.Vector3(), vC = new THREE.Vector3();
+      for(let i = 0; i < faces; i++){
+        vA.fromBufferAttribute(pos, i * 3 + 0);
+        vB.fromBufferAttribute(pos, i * 3 + 1);
+        vC.fromBufferAttribute(pos, i * 3 + 2);
+        if (ray.intersectTriangle(vA, vB, vC, false, dummyTarget)) counter++;
+      }
+      
+      return counter % 2 == 1;
+    }
+    console.log(points.length);
+    return new THREE.BufferGeometry().setFromPoints(points);
+  }
+
+
+  var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, 1, 1, 1000);
+camera.position.setScalar(30);
+var renderer = new THREE.WebGLRenderer({
+  antialias: true,color:'0xffffff'
+});
+var canvas = renderer.domElement
+document.body.appendChild(canvas);
+var light = new THREE.DirectionalLight( 0xffffff );
+light.position.set( 0, 1, 1 ).normalize();
+scene.add(light);
+var light2 = new THREE.DirectionalLight( 0xffffff );
+light2.position.set( 0, 5, 1 ).normalize();
+scene.add(light2);
+var light3 = new THREE.DirectionalLight( 0xffffff );
+light3.position.set( 1, 5, 8 ).normalize();
+scene.add(light3);
+renderer.setClearColor(0x000000, 1.0);
+
+var geometry = new THREE.ConeBufferGeometry( 5, 4, 35, 18 ).toNonIndexed();
+var material = new THREE.MeshPhongMaterial( { ambient: 0x050505, color: 0x0033ff, specular: 0x555555, shininess: 30 } );
+
+var torus = new THREE.Mesh( geometry, material );
+torus.position.y=-4;
+
+
+var cylindergeo= new THREE.CylinderBufferGeometry( 3, 3, 10,21, 1 ).toNonIndexed();
+var cylinder = new THREE.Mesh( cylindergeo, material );
+var spheregeo= new THREE.SphereBufferGeometry( 4, 32, 32, 18 ).toNonIndexed();
+var sphere = new THREE.Mesh( spheregeo, material );
+sphere.position.y=4;
+
+const group = new THREE.Group();
+group.add( torus );
+group.add( cylinder );
+
+group.add( sphere );
+scene.add(group)
+
+texture = THREE.ImageUtils.loadTexture( "./assets/textures/board.png" );
+
+texture.wrapS = THREE.RepeatWrapping; 
+texture.wrapT = THREE.RepeatWrapping;
+
+
+texture.repeat.set( 4, 4 ); 
+
+material = new THREE.MeshLambertMaterial({ map : texture });
+plane = new THREE.Mesh(new THREE.PlaneGeometry(150, 150), material);
+plane.material.side = THREE.DoubleSide;
+
+plane.rotation.x=Math.PI / 2;
+plane.position.y=-7;
+
+
+
+scene.add(plane);
+
+
+
+group.position.x=-68;
+group.position.z=-68;
+
+group.position.y=-1;
+
+
+
+       
+        var isMoving=true;
+        var movingOn=false;
+        var isWatching=false;
+        var isDollyZooming=false;
+        var shouldmake=false;
+
+        var controls = new function() {
+            this.perspective = "Perspective";
+            this.switchCamera = function() {
+                
+                    camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 1, 1000);
+                    camera.position.x = 120;
+                    camera.position.y = 60;
+                    camera.position.z = 180;
+                    camera.rotation.x = -0.7853981633974482;
+                    camera.rotation.y = 0.6154797086703871;
+                    camera.rotation.z = 0.5235987755982987;
+                    movingOn=false;
+                    camera.lookAt(scene.position);
+                   
+                    var controlsz = new THREE.OrbitControls(camera, canvas);
+                    isDollyZooming=false;
+            };
+        }
+
+        var movingCamera = new function() {
+            
+            this.MovingCamera = function() {
+                
+             camera=  new THREE.PerspectiveCamera(45,  window.innerWidth / window.innerHeight, 1, 1000); 
+           camera.position.setScalar(30);
+                   camera.position.x = 30;
+                   camera.position.y = 30;
+                  camera.position.z = 30;
+                   camera.rotation.x = -0.7853981633974482;
+                   camera.rotation.y = 0.6154797086703871;
+                    camera.rotation.z = 0.5235987755982987;
+                    moveToStart();
+                    movingOn=true;
+                   isWatching=true;
+                isDollyZooming=false;
+                
+            };
+        }
+
+        var moveRooks = new function() {
+            
+            this.moveRooks = function() {
+                
+                moveToStart()
+                    isWatching=false;
+                    movingOn=true;
+                    isDollyZooming=false;
+                    camera.lookAt(scene.position);
+                    var controlsz = new THREE.OrbitControls(camera, canvas);
+            };
+        }
+        var dolyzoom = new function() {
+            
+            this.dollyzoom = function() {
+                
+                
+                  
+                    movingOn=false;
+                    
+                    camera.lookAt(group.position);
+                    moveToStart();
+                   // var controlsz = new THREE.OrbitControls(camera, canvas);
+                    isDollyZooming=true;
+                    shouldmake=true;
+            };
+        }
+
+        function doDollyZoom( ){
+
+            if(shouldmake){
+            camera =  new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 1000 );
+            shouldmake=false;
+            }
+            
+var maxFov=190;
+    if(camera.position.x<50){
+        
+
+        //camera.fov+=.07;
+        camera.position.x+=.3;
+        camera.position.z+=.3;
+        camera.zoom+=.016;
+        camera.updateProjectionMatrix();
+      
+    }
+    if(camera.position.x>49){
+        isDollyZooming=false;
+    }
+        }
+
+        var gui = new dat.GUI();
+        gui.add(controls, 'switchCamera');
+        gui.add(movingCamera, 'MovingCamera');
+        gui.add(moveRooks, 'moveRooks');
+        gui.add(dolyzoom, 'dollyzoom');
+        // make sure that for the first time, the
+        // camera is looking at the scene
+        camera.lookAt(scene.position);
+console.log(camera.rotation.x);
+console.log(camera.rotation.y);
+console.log(camera.rotation.z);
+var controlsz = new THREE.OrbitControls(camera, canvas);
+render();
+
+function resize(renderer) {
+  const canvas = renderer.domElement;
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+  const needResize = canvas.width !== width || canvas.height !== height;
+  if (needResize) {
+    renderer.setSize(width, height, false);
+  }
+  return needResize;
+}
+
+function render() {
+  if (resize(renderer)) {
+    camera.aspect = canvas.clientWidth / canvas.clientHeight;
+    camera.updateProjectionMatrix();
+  }
+  renderer.render(scene, camera);
+  requestAnimationFrame(render);
+  if(isWatching){
+      
+    camera.lookAt(group.position);
+}else{
+    camera.lookAt(scene.position);
+}
+if(movingOn){
+mooveRook();
+
+}
+
+if(isDollyZooming){
+
+   // camera.lookAt(plane.position);
+   //camera = new THREE.PerspectiveCamera( 90, 10 / 10, 1, 1000 );
+doDollyZoom();
+console.log(camera.position.x)
+       console.log(camera.position.y)
+
+
+}
+
+
+
+}
+
+function moveToStart(){
+
+    group.position.x= -68
+    group.position.z= -68
+}
+
+function mooveRook(){
+   // camera.lookAt(group.position);
+   camera.fov+=2;
+if(group.position.x== -68 &&
+group.position.z== -68){
+ 
+isMoving=true;
+}
+
+if(group.position.x== 68 &&
+group.position.z== 68){
+ 
+isMoving=false;
+}
+
+if(isMoving){
+    group.position.x+=0.5;
+group.position.z+=0.5;
+}else{
+    group.position.x-=0.5;
+group.position.z-=0.5;
+
+}
+
+
+}
+
+
+
+function createMesh(geom) {
+
+// assign two materials
+var meshMaterial = new THREE.MeshBasicMaterial({color: 0x00ff00, transparent: true, opacity: 0.2});
+meshMaterial.side = THREE.DoubleSide;
+var wireFrameMat = new THREE.MeshBasicMaterial();
+wireFrameMat.wireframe = true;
+
+// create a multimaterial
+var mesh = THREE.SceneUtils.createMultiMaterialObject(geom, [meshMaterial, wireFrameMat]);
+
+return mesh;
+}
+
+</script>
+</body>
+</html>
